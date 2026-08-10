@@ -16,18 +16,28 @@ scripts. No proprietary code, no credentials.
    into a persistent `CARGO_HOME`/`RUSTUP_HOME` and puts `cargo` on `PATH`.
    It's idempotent and falls back to official rustup if no asset exists yet.
 
+The default toolchain is pinned to **1.97.1** with **rustfmt + clippy** bundled,
+matching `floodcaster-platform`'s `rust-toolchain.toml`, so its vendored build
+runs fully offline (no component fetches on first use).
+
 ## Build the toolchain (once per version)
 
 ```bash
-gh workflow run build-toolchain.yml -f toolchain=stable
+gh workflow run build-toolchain.yml -f toolchain=1.97.1
 ```
 
 ## Use it in the sandbox
 
 ```bash
 # persist to a path that survives sandbox re-creation if you have one
-RUST_CACHE_ROOT=/persist source scripts/bootstrap-cargo.sh
+RUST_CACHE_ROOT=/persist source scripts/bootstrap-cargo.sh   # pulls 1.97.1 by default
 cargo --version
+```
+
+To use a different version, set `RUST_TOOLCHAIN` (and publish that tag first):
+
+```bash
+RUST_TOOLCHAIN=stable RUST_CACHE_ROOT=/persist source scripts/bootstrap-cargo.sh
 ```
 
 For a supply-chain-frozen (vendored) project, this is all you need — once

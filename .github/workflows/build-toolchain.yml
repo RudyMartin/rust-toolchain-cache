@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
     inputs:
       toolchain:
-        description: "rustup toolchain (e.g. stable, 1.90.0)"
-        default: stable
+        description: "rustup toolchain (e.g. 1.97.1, stable)"
+        default: "1.97.1"
         required: true
 
 permissions:
@@ -25,8 +25,12 @@ jobs:
           export CARGO_HOME="$PWD/stage/cargo"
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
             | sh -s -- -y --default-toolchain "${{ inputs.toolchain }}" \
-                --profile minimal --no-modify-path
+                --profile minimal --component rustfmt --component clippy \
+                --no-modify-path
           "$CARGO_HOME/bin/cargo" --version
+          # Confirm bundled components so the vendored build stays offline.
+          "$CARGO_HOME/bin/cargo" fmt --version
+          "$CARGO_HOME/bin/cargo" clippy --version
 
       - name: Pack tarball (cargo/ + rustup/ at root)
         run: |

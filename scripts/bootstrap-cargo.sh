@@ -11,7 +11,7 @@
 _rtc_root="${RUST_CACHE_ROOT:-$HOME/.rust-cache}"
 export CARGO_HOME="${CARGO_HOME:-$_rtc_root/cargo}"
 export RUSTUP_HOME="${RUSTUP_HOME:-$_rtc_root/rustup}"
-_rtc_toolchain="${RUST_TOOLCHAIN:-stable}"
+_rtc_toolchain="${RUST_TOOLCHAIN:-1.97.1}"
 _rtc_repo="${TOOLCHAIN_REPO:-RudyMartin/rust-toolchain-cache}"
 
 if [ -x "$CARGO_HOME/bin/cargo" ]; then
@@ -27,7 +27,8 @@ else
   else
     printf 'release asset unavailable, falling back to rustup...\n' >&2
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-      | sh -s -- -y --default-toolchain "$_rtc_toolchain" --profile minimal --no-modify-path
+      | sh -s -- -y --default-toolchain "$_rtc_toolchain" --profile minimal \
+          --component rustfmt --component clippy --no-modify-path
   fi
 fi
 
