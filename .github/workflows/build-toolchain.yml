@@ -40,7 +40,7 @@ jobs:
           ls -lh rust-*.tar.zst
 
       - name: Publish Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3.0.2
         with:
           tag_name: ${{ inputs.toolchain }}
           files: rust-*.tar.zst
