@@ -14,11 +14,21 @@ export RUSTUP_HOME="${RUSTUP_HOME:-$_rtc_root/rustup}"
 _rtc_toolchain="${RUST_TOOLCHAIN:-1.97.1}"
 _rtc_repo="${TOOLCHAIN_REPO:-RudyMartin/rust-toolchain-cache}"
 
+# Detect the sandbox's libc so we pull a runnable toolchain (musl-linked cargo
+# will not run on a glibc host and vice versa). Override with RUST_LIBC.
+if [ -n "${RUST_LIBC:-}" ]; then
+  _rtc_libc="$RUST_LIBC"
+elif ls /lib/ld-musl-*.so.1 >/dev/null 2>&1 || { command -v ldd >/dev/null 2>&1 && ldd --version 2>&1 | grep -qi musl; }; then
+  _rtc_libc="musl"
+else
+  _rtc_libc="gnu"
+fi
+
 if [ -x "$CARGO_HOME/bin/cargo" ]; then
   printf 'cargo already provisioned: %s\n' "$("$CARGO_HOME/bin/cargo" --version)"
 else
   mkdir -p "$_rtc_root"
-  _rtc_asset="https://github.com/$_rtc_repo/releases/download/$_rtc_toolchain/rust-$_rtc_toolchain-linux-x86_64.tar.zst"
+  _rtc_asset="https://github.com/$_rtc_repo/releases/download/$_rtc_toolchain/rust-$_rtc_toolchain-linux-x86_64-$_rtc_libc.tar.zst"
   if curl -fsSL "$_rtc_asset" -o /tmp/rust-tc.tar.zst; then
     # Tarball root contains cargo/ and rustup/ directories.
     tar -x --zstd -C "$_rtc_root" -f /tmp/rust-tc.tar.zst
@@ -27,7 +37,8 @@ else
   else
     printf 'release asset unavailable, falling back to rustup...\n' >&2
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-      | sh -s -- -y --default-toolchain "$_rtc_toolchain" --profile minimal \
+      | sh -s -- -y --default-host "x86_64-unknown-linux-$_rtc_libc" \
+          --default-toolchain "$_rtc_toolchain" --profile minimal \
           --component rustfmt --component clippy --no-modify-path
   fi
 fi
@@ -45,5 +56,5 @@ else
   _rtc_status=1
 fi
 
-unset _rtc_root _rtc_toolchain _rtc_repo _rtc_asset
+unset _rtc_root _rtc_toolchain _rtc_repo _rtc_asset _rtc_libc
 return "$_rtc_status" 2>/dev/null || exit "$_rtc_status"

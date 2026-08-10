@@ -20,6 +20,24 @@ The default toolchain is pinned to **1.97.1** with **rustfmt + clippy** bundled,
 matching `floodcaster-platform`'s `rust-toolchain.toml`, so its vendored build
 runs fully offline (no component fetches on first use).
 
+Each tag ships **two host variants** — `gnu` (glibc) and `musl` (Alpine/static) —
+and every asset bundles **both** `x86_64-unknown-linux-gnu` and
+`x86_64-unknown-linux-musl` std targets, so you can cross-compile to either libc
+offline. The bootstrap auto-detects the sandbox's libc and pulls the matching
+one; override with `RUST_LIBC=musl` (or `gnu`).
+
+Assets per tag:
+
+```
+rust-<toolchain>-linux-x86_64-gnu.tar.zst
+rust-<toolchain>-linux-x86_64-musl.tar.zst
+```
+
+> musl note: pure-Rust builds to `x86_64-unknown-linux-musl` link with the
+> bundled self-contained linker and need nothing extra. Crates that link C still
+> require a musl C toolchain (`musl-gcc`) in the sandbox — that's a sandbox
+> concern, not part of this cache.
+
 ## Build the toolchain (once per version)
 
 ```bash

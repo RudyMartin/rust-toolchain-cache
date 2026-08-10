@@ -1,7 +1,9 @@
 name: build-toolchain
 
-# Builds a minimal Linux Rust toolchain on a Linux runner and publishes it as a
-# Release asset, so sandboxes can pull it instead of running rustup each time.
+# Builds Linux Rust toolchains (gnu + musl hosts) on a Linux runner and
+# publishes them as Release assets, so sandboxes can pull the one matching their
+# libc instead of running rustup each time. Each asset bundles rustfmt + clippy
+# and BOTH std targets (gnu + musl), so it can build for either libc offline.
 
 on:
   workflow_dispatch:
@@ -18,25 +20,27 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Install toolchain into staging dir
+      - name: Build gnu and musl host toolchains
         run: |
           set -euo pipefail
-          export RUSTUP_HOME="$PWD/stage/rustup"
-          export CARGO_HOME="$PWD/stage/cargo"
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-            | sh -s -- -y --default-toolchain "${{ inputs.toolchain }}" \
-                --profile minimal --component rustfmt --component clippy \
-                --no-modify-path
-          "$CARGO_HOME/bin/cargo" --version
-          # Confirm bundled components so the vendored build stays offline.
-          "$CARGO_HOME/bin/cargo" fmt --version
-          "$CARGO_HOME/bin/cargo" clippy --version
-
-      - name: Pack tarball (cargo/ + rustup/ at root)
-        run: |
-          set -euo pipefail
-          tar -C stage -c --zstd \
-            -f "rust-${{ inputs.toolchain }}-linux-x86_64.tar.zst" cargo rustup
+          TC="${{ inputs.toolchain }}"
+          for HOST in x86_64-unknown-linux-gnu x86_64-unknown-linux-musl; do
+            LIBC="${HOST##*-}"                     # gnu or musl
+            STAGE="$PWD/stage-$LIBC"
+            export RUSTUP_HOME="$STAGE/rustup" CARGO_HOME="$STAGE/cargo"
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+              | sh -s -- -y --default-host "$HOST" --default-toolchain "$TC" \
+                  --profile minimal --component rustfmt --component clippy \
+                  --no-modify-path
+            # Bundle both std targets so either libc can be a build target offline.
+            "$CARGO_HOME/bin/rustup" target add \
+              x86_64-unknown-linux-gnu x86_64-unknown-linux-musl
+            "$CARGO_HOME/bin/cargo" --version
+            "$CARGO_HOME/bin/cargo" fmt --version
+            "$CARGO_HOME/bin/cargo" clippy --version
+            tar -C "$STAGE" -c --zstd \
+              -f "rust-$TC-linux-x86_64-$LIBC.tar.zst" cargo rustup
+          done
           ls -lh rust-*.tar.zst
 
       - name: Publish Release
