@@ -44,6 +44,11 @@ rust-<toolchain>-linux-x86_64-musl.tar.zst
 gh workflow run build-toolchain.yml -f toolchain=1.97.1
 ```
 
+A scheduled run rebuilds the pinned default monthly (06:00 UTC, 1st of the
+month) as a build canary — it verifies the rustup/Alpine/action toolchain still
+works and keeps the release assets present. Trigger a specific version anytime
+with the command above.
+
 ## Use it in the sandbox
 
 ```bash

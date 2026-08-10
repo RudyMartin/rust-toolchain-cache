@@ -17,6 +17,12 @@ on:
         description: "rustup toolchain (e.g. 1.97.1, stable)"
         default: "1.97.1"
         required: true
+  schedule:
+    # Monthly rebuild (06:00 UTC on the 1st) as a build canary: verifies the
+    # rustup URLs, Alpine deps, and action versions still work, and keeps the
+    # release assets present. schedule runs cannot pass inputs, so the jobs fall
+    # back to the pinned default (see `inputs.toolchain || '1.97.1'`).
+    - cron: "0 6 1 * *"
 
 permissions:
   contents: write   # required to create the Release
@@ -29,7 +35,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TC="${{ inputs.toolchain }}"
+          TC="${{ inputs.toolchain || '1.97.1' }}"
           export RUSTUP_HOME="$PWD/stage/rustup" CARGO_HOME="$PWD/stage/cargo"
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
             | sh -s -- -y --default-host x86_64-unknown-linux-gnu \
@@ -59,7 +65,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TC="${{ inputs.toolchain }}"
+          TC="${{ inputs.toolchain || '1.97.1' }}"
           export RUSTUP_HOME="$PWD/stage/rustup" CARGO_HOME="$PWD/stage/cargo"
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
             | sh -s -- -y --default-host x86_64-unknown-linux-musl \
