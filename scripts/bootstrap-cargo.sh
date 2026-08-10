@@ -29,18 +29,24 @@ if [ -x "$CARGO_HOME/bin/cargo" ]; then
 else
   mkdir -p "$_rtc_root"
   _rtc_asset="https://github.com/$_rtc_repo/releases/download/$_rtc_toolchain/rust-$_rtc_toolchain-linux-x86_64-$_rtc_libc.tar.zst"
-  if curl -fsSL "$_rtc_asset" -o /tmp/rust-tc.tar.zst; then
+  _rtc_tmp="$(mktemp "${TMPDIR:-/tmp}/rust-tc.XXXXXX")"
+  # Fast path (prebuilt tarball) only when CARGO_HOME/RUSTUP_HOME are at their
+  # default locations under RUST_CACHE_ROOT, since the tarball extracts to
+  # $_rtc_root/{cargo,rustup}. Otherwise fall through to rustup, which honors a
+  # custom CARGO_HOME/RUSTUP_HOME.
+  if [ "$CARGO_HOME" = "$_rtc_root/cargo" ] && [ "$RUSTUP_HOME" = "$_rtc_root/rustup" ] \
+     && curl -fsSL "$_rtc_asset" -o "$_rtc_tmp"; then
     # Tarball root contains cargo/ and rustup/ directories.
-    tar -x --zstd -C "$_rtc_root" -f /tmp/rust-tc.tar.zst
-    rm -f /tmp/rust-tc.tar.zst
+    tar -x --zstd -C "$_rtc_root" -f "$_rtc_tmp"
     printf 'provisioned from release: %s\n' "$_rtc_asset"
   else
-    printf 'release asset unavailable, falling back to rustup...\n' >&2
+    printf 'using rustup (custom paths or asset unavailable)...\n' >&2
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
       | sh -s -- -y --default-host "x86_64-unknown-linux-$_rtc_libc" \
           --default-toolchain "$_rtc_toolchain" --profile minimal \
           --component rustfmt --component clippy --no-modify-path
   fi
+  rm -f "$_rtc_tmp"
 fi
 
 case ":${PATH}:" in
@@ -56,5 +62,5 @@ else
   _rtc_status=1
 fi
 
-unset _rtc_root _rtc_toolchain _rtc_repo _rtc_asset _rtc_libc
+unset _rtc_root _rtc_toolchain _rtc_repo _rtc_asset _rtc_libc _rtc_tmp
 return "$_rtc_status" 2>/dev/null || exit "$_rtc_status"

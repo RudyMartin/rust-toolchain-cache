@@ -33,9 +33,11 @@ jobs:
     steps:
       - name: Build gnu-host toolchain
         shell: bash
+        env:
+          TC_INPUT: ${{ inputs.toolchain }}
         run: |
           set -euo pipefail
-          TC="${{ inputs.toolchain || '1.97.1' }}"
+          TC="${TC_INPUT:-1.97.1}"
           export RUSTUP_HOME="$PWD/stage/rustup" CARGO_HOME="$PWD/stage/cargo"
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
             | sh -s -- -y --default-host x86_64-unknown-linux-gnu \
@@ -51,7 +53,7 @@ jobs:
       - name: Publish gnu asset
         uses: softprops/action-gh-release@v3.0.2
         with:
-          tag_name: ${{ inputs.toolchain }}
+          tag_name: ${{ inputs.toolchain || '1.97.1' }}
           files: rust-*.tar.zst
 
   build-musl:
@@ -63,9 +65,11 @@ jobs:
         run: apk add --no-cache bash curl gcc musl-dev tar zstd libgcc
       - name: Build musl-host toolchain
         shell: bash
+        env:
+          TC_INPUT: ${{ inputs.toolchain }}
         run: |
           set -euo pipefail
-          TC="${{ inputs.toolchain || '1.97.1' }}"
+          TC="${TC_INPUT:-1.97.1}"
           export RUSTUP_HOME="$PWD/stage/rustup" CARGO_HOME="$PWD/stage/cargo"
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
             | sh -s -- -y --default-host x86_64-unknown-linux-musl \
@@ -81,5 +85,5 @@ jobs:
       - name: Publish musl asset
         uses: softprops/action-gh-release@v3.0.2
         with:
-          tag_name: ${{ inputs.toolchain }}
+          tag_name: ${{ inputs.toolchain || '1.97.1' }}
           files: rust-*.tar.zst
