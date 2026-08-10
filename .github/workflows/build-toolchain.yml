@@ -1,0 +1,42 @@
+name: build-toolchain
+
+# Builds a minimal Linux Rust toolchain on a Linux runner and publishes it as a
+# Release asset, so sandboxes can pull it instead of running rustup each time.
+
+on:
+  workflow_dispatch:
+    inputs:
+      toolchain:
+        description: "rustup toolchain (e.g. stable, 1.90.0)"
+        default: stable
+        required: true
+
+permissions:
+  contents: write   # required to create the Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install toolchain into staging dir
+        run: |
+          set -euo pipefail
+          export RUSTUP_HOME="$PWD/stage/rustup"
+          export CARGO_HOME="$PWD/stage/cargo"
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+            | sh -s -- -y --default-toolchain "${{ inputs.toolchain }}" \
+                --profile minimal --no-modify-path
+          "$CARGO_HOME/bin/cargo" --version
+
+      - name: Pack tarball (cargo/ + rustup/ at root)
+        run: |
+          set -euo pipefail
+          tar -C stage -c --zstd \
+            -f "rust-${{ inputs.toolchain }}-linux-x86_64.tar.zst" cargo rustup
+          ls -lh rust-*.tar.zst
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.toolchain }}
+          files: rust-*.tar.zst
