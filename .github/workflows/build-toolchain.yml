@@ -24,6 +24,10 @@ jobs:
         run: |
           set -euo pipefail
           TC="${{ inputs.toolchain }}"
+          # The musl-host cargo/rustc are dynamically linked against the musl
+          # loader; install it so those binaries can exec on this glibc runner.
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq musl
           for HOST in x86_64-unknown-linux-gnu x86_64-unknown-linux-musl; do
             LIBC="${HOST##*-}"                     # gnu or musl
             STAGE="$PWD/stage-$LIBC"
